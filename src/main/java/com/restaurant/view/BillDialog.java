@@ -2,7 +2,6 @@ package com.restaurant.view;
 
 import com.restaurant.model.Bill;
 import com.restaurant.model.OrderItem;
-import com.restaurant.model.RestaurantTable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,19 +20,11 @@ import java.util.List;
  */
 public class BillDialog extends JDialog implements Printable {
 
-    private final Bill bill;
-    private final List<OrderItem> items;
-    private final int tableNumber;
-    private JPanel receiptPanel;
-
     /**
      * Constructs and instantly reveals the receipt dialog locking the parent Frame.
      */
     public BillDialog(Frame owner, Bill bill, List<OrderItem> items, int tableNumber) {
         super(owner, "Bill Receipt - Table " + tableNumber, true);
-        this.bill = bill;
-        this.items = items;
-        this.tableNumber = tableNumber;
         getContentPane().setBackground(Color.WHITE);
 
         // ── Receipt panel ────────────────────────────────────────
