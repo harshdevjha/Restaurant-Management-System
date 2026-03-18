@@ -8,7 +8,9 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
 /**
- * StaffPanel – Admin panel to manage staff / admin accounts.
+ * StaffPanel – Privileged administrative dashboard managing credential issuance and privileges.
+ * Capable of structurally intercepting new User creation, editing role designations ('ADMIN' vs 'STAFF'),
+ * and irreversibly deleting accounts natively mapping changes functionally to the backend SQL instance.
  */
 public class StaffPanel extends JPanel {
 
@@ -23,14 +25,16 @@ public class StaffPanel extends JPanel {
         loadData();
     }
 
+    /** Frames internal data representations leveraging standard Swing component hierarchy. */
     private void initUI() {
         JLabel heading = UITheme.createLabel("👥  Staff Management", UITheme.FONT_TITLE, UITheme.PRIMARY);
 
+        // ── Security Data Table ───────────────────────────────────────
         tableModel = new DefaultTableModel(
                 new String[] { "ID", "Username", "Full Name", "Role", "Active" }, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
-                return false;
+                return false; // Cell interaction strictly prevented. All writes must route via ShowDialog()
             }
         };
         table = new JTable(tableModel);
@@ -41,6 +45,7 @@ public class StaffPanel extends JPanel {
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(0xDDC8B8)));
 
+        // ── Interface Toolbar ──────────────────────────────────────────
         JButton addBtn = UITheme.createButton("+ Add Staff", UITheme.SUCCESS, Color.WHITE);
         JButton editBtn = UITheme.createButton("✎ Edit", UITheme.PRIMARY, Color.WHITE);
         JButton deleteBtn = UITheme.createButton("✕ Delete", UITheme.DANGER, Color.WHITE);
@@ -63,6 +68,7 @@ public class StaffPanel extends JPanel {
         add(toolbar, BorderLayout.SOUTH);
     }
 
+    /** Actively executes network level aggregation synchronizing tabular state explicitly with DB */
     private void loadData() {
         tableModel.setRowCount(0);
         for (User u : AdminController.getAllStaff()) {
@@ -73,6 +79,7 @@ public class StaffPanel extends JPanel {
         }
     }
 
+    /** Interprets pointer selection converting isolated DB identity keys to actionable User models */
     private void editSelected() {
         int row = table.getSelectedRow();
         if (row < 0) {
@@ -80,10 +87,13 @@ public class StaffPanel extends JPanel {
             return;
         }
         int id = (int) tableModel.getValueAt(row, 0);
+        
+        // Scan system explicitly locking onto singular memory-mapped object possessing selected ID
         AdminController.getAllStaff().stream().filter(u -> u.getId() == id)
                 .findFirst().ifPresent(this::showDialog);
     }
 
+    /** Prompts terminal structural override definitively erasing a credential object permanently */
     private void deleteSelected() {
         int row = table.getSelectedRow();
         if (row < 0) {
@@ -94,12 +104,18 @@ public class StaffPanel extends JPanel {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Delete user '" + tableModel.getValueAt(row, 2) + "'?", "Confirm Delete",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                
         if (confirm == JOptionPane.YES_OPTION) {
-            if (AdminController.deleteUser(id))
-                loadData();
+            if (AdminController.deleteUser(id)) {
+                loadData(); // Success: Hard reboot state representation reflecting loss
+            }
         }
     }
 
+    /**
+     * Halts application execution launching modal transaction environment handling User credential CRUD logic.
+     * @param existing Triggers morphing into update (true) or creation (false/null) interface schema.
+     */
     private void showDialog(User existing) {
         boolean isNew = (existing == null);
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
@@ -108,6 +124,7 @@ public class StaffPanel extends JPanel {
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout(10, 10));
 
+        // ── Input Fields ────────────────────────────────────────────────
         JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
         form.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
         form.setBackground(UITheme.CONTENT_BG);
@@ -118,6 +135,7 @@ public class StaffPanel extends JPanel {
         JComboBox<String> roleCombo = new JComboBox<>(new String[] { "STAFF", "ADMIN" });
         JCheckBox activeBox = new JCheckBox("Active", true);
 
+        // Conditionally populate interface avoiding empty null anomalies natively via reference passing
         if (!isNew) {
             unField.setText(existing.getUsername());
             passField.setText(existing.getPassword());
@@ -128,8 +146,11 @@ public class StaffPanel extends JPanel {
 
         form.add(UITheme.createLabel("Username:", UITheme.FONT_BTN, UITheme.TEXT_DARK));
         form.add(unField);
+        // Note: Password plainly text. Future security iterations should mask & hash payload natively
         form.add(UITheme.createLabel("Password:", UITheme.FONT_BTN, UITheme.TEXT_DARK));
         form.add(passField);
+        System.out.println("WARNING: Passwords captured via plaintext formatting."); // Reminder mapping technical debt assumption
+
         form.add(UITheme.createLabel("Full Name:", UITheme.FONT_BTN, UITheme.TEXT_DARK));
         form.add(nameField);
         form.add(UITheme.createLabel("Role:", UITheme.FONT_BTN, UITheme.TEXT_DARK));
@@ -137,9 +158,11 @@ public class StaffPanel extends JPanel {
         form.add(UITheme.createLabel("Status:", UITheme.FONT_BTN, UITheme.TEXT_DARK));
         form.add(activeBox);
 
+        // ── Transaction Hooks ───────────────────────────────────────────
         JButton save = UITheme.createButton("Save", UITheme.SUCCESS, Color.WHITE);
         JButton cancel = UITheme.createButton("Cancel", UITheme.DANGER, Color.WHITE);
         cancel.addActionListener(e -> dialog.dispose());
+        
         save.addActionListener(e -> {
             User u = isNew ? new User() : existing;
             u.setUsername(unField.getText().trim());
@@ -147,12 +170,15 @@ public class StaffPanel extends JPanel {
             u.setFullName(nameField.getText().trim());
             u.setRole((String) roleCombo.getSelectedItem());
             u.setActive(activeBox.isSelected());
+            
+            // Abstract transactional backend call handling implicit try-catch blocks cleanly
             boolean ok = isNew ? AdminController.addUser(u) : AdminController.updateUser(u);
             if (ok) {
                 loadData();
                 dialog.dispose();
-            } else
+            } else {
                 JOptionPane.showMessageDialog(dialog, "Save failed.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
         });
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT));

@@ -5,25 +5,50 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Model representing a customer order for a table.
+ * Model class representing a customer order session for a specific table.
+ * Maps to the 'orders' table in the database and holds a collection of OrderItems.
  */
 public class Order {
+    /**
+     * Enumeration defining the lifecycle of an order:
+     * - PENDING: Order is taken but not yet served completely.
+     * - SERVED: Food has been served to the customer.
+     * - BILLED: The final bill has been generated and the order is complete.
+     */
     public enum Status {
         PENDING, SERVED, BILLED
     }
 
+    // Unique order ID (Primary Key)
     private int id;
+    
+    // The physical table this order belongs to
     private int tableId;
-    private int tableNumber; // convenience
+    
+    // Convenience field for quick UI rendering of the table number
+    private int tableNumber;
+    
+    // The staff member who took this order
     private int userId;
-    private String userName; // convenience
+    
+    // Convenience field representing the staff's name for UI display
+    private String userName;
+    
+    // Current lifecycle status of the order
     private Status status;
+    
+    // When the order was first created
     private Timestamp createdAt;
+    
+    // List of individual items (dishes/beverages) ordered during this session
     private List<OrderItem> items = new ArrayList<>();
 
+    /** Default constructor */
     public Order() {
     }
 
+    // ── Getters & Setters ──────────────────────────────────────────────────
+    
     public int getId() {
         return id;
     }
@@ -88,7 +113,10 @@ public class Order {
         this.items = l;
     }
 
-    /** Returns the sum of all order item subtotals. */
+    /** 
+     * Utility method to calculate the total price of all items currently in the order. 
+     * @return the total sum of subtotals from each order item.
+     */
     public double getSubtotal() {
         double total = 0;
         for (OrderItem oi : items)

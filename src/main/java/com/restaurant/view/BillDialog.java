@@ -2,37 +2,37 @@ package com.restaurant.view;
 
 import com.restaurant.model.Bill;
 import com.restaurant.model.OrderItem;
+import com.restaurant.model.RestaurantTable;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.print.*;
+import java.awt.print.PageFormat;
+import java.awt.print.Printable;
+import java.awt.print.PrinterException;
+import java.awt.print.PrinterJob;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 /**
- * BillDialog – formatted receipt dialog shown after a bill is generated.
- * Includes a print function via java.awt.print.
+ * BillDialog – Modal window that strictly formats billing totals into a stylized receipt format.
+ * Mimics thermal-printer aesthetic featuring a fixed-width monospace font layout.
+ * Inherits standard Printable interface allowing native spooling to local hardware printers.
  */
 public class BillDialog extends JDialog implements Printable {
 
     private final Bill bill;
     private final List<OrderItem> items;
     private final int tableNumber;
+    private JPanel receiptPanel;
 
-    public BillDialog(Frame parent, Bill bill, List<OrderItem> items, int tableNumber) {
-        super(parent, "Bill Receipt — Table " + tableNumber, true);
+    /**
+     * Constructs and instantly reveals the receipt dialog locking the parent Frame.
+     */
+    public BillDialog(Frame owner, Bill bill, List<OrderItem> items, int tableNumber) {
+        super(owner, "Bill Receipt - Table " + tableNumber, true);
         this.bill = bill;
         this.items = items;
         this.tableNumber = tableNumber;
-        setSize(440, 580);
-        setLocationRelativeTo(parent);
-        setResizable(false);
-        initUI();
-    }
-
-    private void initUI() {
-        setLayout(new BorderLayout(0, 0));
         getContentPane().setBackground(Color.WHITE);
 
         // ── Receipt panel ────────────────────────────────────────

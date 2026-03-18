@@ -10,7 +10,9 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * AdminMenuPanel – Admin view to Add / Edit / Delete menu items.
+ * AdminMenuPanel – Privileged administrative view facilitating Menu Item lifecycle management.
+ * Provides a tabular overview of all discoverable items and a modal CRUD interface.
+ * Exclusively accessible to users possessing the 'ADMIN' role designation.
  */
 public class AdminMenuPanel extends JPanel {
 
@@ -25,10 +27,12 @@ public class AdminMenuPanel extends JPanel {
         loadData();
     }
 
+    /** Structurally maps and aligns interior panes comprising the data table and toolbar controls. */
     private void initUI() {
         JLabel heading = UITheme.createLabel("🍕  Menu Management", UITheme.FONT_TITLE, UITheme.PRIMARY);
 
-        // Table
+        // ── Data Table ────────────────────────────────────────────────
+        // Disallow direct cell editing to enforce transactional validation via explicit dialogs
         tableModel = new DefaultTableModel(
                 new String[] { "ID", "Category", "Name", "Description", "Price (₹)", "Available" }, 0) {
             @Override
@@ -39,13 +43,14 @@ public class AdminMenuPanel extends JPanel {
         table = new JTable(tableModel);
         UITheme.styleTable(table);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        // Constrain ID and Status columns logically favoring name/description widths
         table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(5).setMaxWidth(80);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(0xDDC8B8)));
 
-        // Toolbar
+        // ── Toolbar ───────────────────────────────────────────────────
         JButton addBtn = UITheme.createButton("+ Add Item", UITheme.SUCCESS, Color.WHITE);
         JButton editBtn = UITheme.createButton("✎ Edit Item", UITheme.PRIMARY, Color.WHITE);
         JButton deleteBtn = UITheme.createButton("✕ Delete Item", UITheme.DANGER, Color.WHITE);
@@ -68,6 +73,7 @@ public class AdminMenuPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
     }
 
+    /** Truncates soft rows and executes a synchronous fetch repopulating from the database cluster. */
     private void loadData() {
         tableModel.setRowCount(0);
         for (MenuItem mi : MenuController.getAllItems()) {
@@ -79,6 +85,7 @@ public class AdminMenuPanel extends JPanel {
         }
     }
 
+    /** Isolates user highlighting and extracts underlying primary key launching update mutation modal. */
     private void editSelected() {
         int row = table.getSelectedRow();
         if (row < 0) {
@@ -86,11 +93,12 @@ public class AdminMenuPanel extends JPanel {
             return;
         }
         int id = (int) tableModel.getValueAt(row, 0);
-        // Find the item from DB
+        // Execute eager linear scan resolving complete MenuItem object matching selected primitive ID
         List<MenuItem> all = MenuController.getAllItems();
         all.stream().filter(mi -> mi.getId() == id).findFirst().ifPresent(this::showItemDialog);
     }
 
+    /** Prompts terminal administrative override permanently scrubbing selected entity structurally. */
     private void deleteSelected() {
         int row = table.getSelectedRow();
         if (row < 0) {
@@ -101,6 +109,7 @@ public class AdminMenuPanel extends JPanel {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Delete '" + tableModel.getValueAt(row, 2) + "'?", "Confirm Delete",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                
         if (confirm == JOptionPane.YES_OPTION) {
             if (MenuController.deleteItem(id))
                 loadData();
@@ -110,6 +119,10 @@ public class AdminMenuPanel extends JPanel {
         }
     }
 
+    /** 
+     * Modal execution intercepting app flow provisioning new constructs or modifying existing ones.
+     * @param existing Pre-filled entity (Triggers 'Edit' mode), or NULL (Triggers 'Create' mode).
+     */
     private void showItemDialog(MenuItem existing) {
         boolean isNew = (existing == null);
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
@@ -118,12 +131,12 @@ public class AdminMenuPanel extends JPanel {
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout(10, 10));
 
-        // Form
+        // ── Input Form ────────────────────────────────────────────────
         JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
         form.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
         form.setBackground(UITheme.CONTENT_BG);
 
-        // Category combo
+        // Dynamically queried Category combo-box avoiding hardcoded Enums
         List<Category> cats = MenuController.getAllCategories();
         JComboBox<Category> catCombo = new JComboBox<>(cats.toArray(new Category[0]));
 
@@ -132,6 +145,7 @@ public class AdminMenuPanel extends JPanel {
         JTextField priceField = UITheme.createTextField(10);
         JCheckBox availBox = new JCheckBox("Available", true);
 
+        // Morph dialog proactively mapping existing state visually
         if (!isNew) {
             cats.stream().filter(c -> c.getId() == existing.getCategoryId())
                     .findFirst().ifPresent(catCombo::setSelectedItem);
@@ -152,11 +166,14 @@ public class AdminMenuPanel extends JPanel {
         form.add(UITheme.createLabel("Status:", UITheme.FONT_BTN, UITheme.TEXT_DARK));
         form.add(availBox);
 
+        // ── Transaction Hooks ─────────────────────────────────────────
         JButton save = UITheme.createButton("Save", UITheme.SUCCESS, Color.WHITE);
         JButton cancel = UITheme.createButton("Cancel", UITheme.DANGER, Color.WHITE);
         cancel.addActionListener(e -> dialog.dispose());
+        
         save.addActionListener(e -> {
             try {
+                // Map volatile UI strings back to underlying strongly-typed Data Model
                 MenuItem mi = isNew ? new MenuItem() : existing;
                 Category selCat = (Category) catCombo.getSelectedItem();
                 mi.setCategoryId(selCat != null ? selCat.getId() : 0);
@@ -165,13 +182,15 @@ public class AdminMenuPanel extends JPanel {
                 mi.setPrice(Double.parseDouble(priceField.getText().trim()));
                 mi.setAvailable(availBox.isSelected());
 
+                // Route natively through controller abstracting SQL interaction
                 boolean ok = isNew ? MenuController.addItem(mi) : MenuController.updateItem(mi);
                 if (ok) {
-                    loadData();
+                    loadData(); // Sync parent table
                     dialog.dispose();
                 } else
                     JOptionPane.showMessageDialog(dialog, "Save failed.", "Error", JOptionPane.ERROR_MESSAGE);
             } catch (NumberFormatException ex) {
+                // Defensively trap alphabetical characters explicitly typed into numerical pricing constraints
                 JOptionPane.showMessageDialog(dialog, "Price must be a valid number.");
             }
         });

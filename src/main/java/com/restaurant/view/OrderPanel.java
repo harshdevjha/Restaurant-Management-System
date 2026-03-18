@@ -17,9 +17,10 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * OrderPanel – split screen:
- * LEFT — category tabs + scrollable menu items with "Add" buttons
- * RIGHT — cart (order items) with qty controls + "Generate Bill" button
+ * OrderPanel – Comprehensive transactional viewport facilitating the ordering process.
+ * Constructed via an adjustable JSplitPane:
+ * LEFT PANE: Horizontally tabbed menu categories featuring generated item cards.
+ * RIGHT PANE: Real-time 'Cart' reflection containing queued line items, prices, and checkout hooks.
  */
 public class OrderPanel extends JPanel {
 
@@ -31,19 +32,24 @@ public class OrderPanel extends JPanel {
     private JLabel totalLabel;
     private JTable cartTable;
 
+    /** 
+     * Constructor anchoring the panel to a physical restaurant table constraint.
+     */
     public OrderPanel(RestaurantTable table, User user, TableLayoutPanel parent) {
         this.table = table;
         this.parent = parent;
         setLayout(new BorderLayout());
         setBackground(UITheme.CONTENT_BG);
 
-        // Load or create order
+        // ── Order Synchronization ──────────────────────────────
+        // Interrogate database assessing if this table inherently possesses an active session
         currentOrder = OrderController.getActiveOrderForTable(table.getId());
         if (currentOrder == null) {
+            // Provision brand new physical grouping inside 'orders' DB
             int orderId = OrderController.createOrder(table.getId(), user.getId());
             currentOrder = OrderController.getActiveOrderForTable(table.getId());
             if (currentOrder == null) {
-                // fallback - build a transient order shell
+                // Failsafe fallback - build a transient order shell incase DB fetch anomalously fails
                 currentOrder = new Order();
                 currentOrder.setId(orderId);
                 currentOrder.setTableId(table.getId());
@@ -54,19 +60,19 @@ public class OrderPanel extends JPanel {
             }
         }
 
-        // Ensure table status is instantly marked Occupied visually for the user and in
-        // the DB
+        // Ensure table status is instantly marked Occupied visually for the user and in the DB
         try {
             OrderController.updateTableStatus(table.getId(), RestaurantTable.Status.OCCUPIED);
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(); // Swallow exceptions securely in UI scope
         }
-        parent.refresh();
+        parent.refresh(); // Tell parent TableGrid to paint red
 
         initUI();
         refreshCart();
     }
 
+    /** Structurally maps and aligns interior panes. */
     private void initUI() {
         // ── Header ──────────────────────────────────────────────
         JLabel heading = UITheme.createLabel(
@@ -80,6 +86,7 @@ public class OrderPanel extends JPanel {
         add(header, BorderLayout.NORTH);
 
         // ── Split pane ───────────────────────────────────────────
+        // Horizontal orientation allocating larger bias natively toward the menu selection portion
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildMenuPanel(), buildCartPanel());
         split.setDividerLocation(560);
         split.setDividerSize(4);
@@ -88,6 +95,7 @@ public class OrderPanel extends JPanel {
     }
 
     // ── Left: Menu panel ──────────────────────────────────────────
+    /** Constructs the tabular taxonomy containing distinct menu categories. */
     private JPanel buildMenuPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(UITheme.CONTENT_BG);
@@ -96,6 +104,7 @@ public class OrderPanel extends JPanel {
         JLabel lbl = UITheme.createLabel("Menu", UITheme.FONT_HEADING, UITheme.TEXT_DARK);
         panel.add(lbl, BorderLayout.NORTH);
 
+        // Inject dynamic Category classification directly from schema
         List<Category> categories = MenuController.getAllCategories();
         JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(UITheme.FONT_BTN);
@@ -109,8 +118,9 @@ public class OrderPanel extends JPanel {
         return panel;
     }
 
+    /** Embeds category-specific items inside a vertical scrolling pane layout. */
     private JScrollPane buildCategoryTab(Category cat) {
-        JPanel itemGrid = new JPanel(new GridLayout(0, 1, 10, 10));
+        JPanel itemGrid = new JPanel(new GridLayout(0, 1, 10, 10)); // Single wide column
         itemGrid.setBackground(UITheme.CONTENT_BG);
         itemGrid.setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8));
 
@@ -126,13 +136,16 @@ public class OrderPanel extends JPanel {
         return scroll;
     }
 
+    /** 
+     * Assembles a modular, richly-styled interactive card dictating a single purchasable Item. 
+     * Automatically attempts to resolve network images simulating real-world aesthetic.
+     */
     private JPanel buildMenuItemCard(MenuItem item, String categoryName) {
         JPanel card = new JPanel(new BorderLayout(6, 4)) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(Color.WHITE);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2.setColor(new Color(0xEEDDCC));
@@ -146,23 +159,27 @@ public class OrderPanel extends JPanel {
         JLabel name = UITheme.createLabel("<html>" + item.getName() + "</html>", UITheme.FONT_BTN, UITheme.TEXT_DARK);
         JLabel price = UITheme.createLabel("₹ " + String.format("%.2f", item.getPrice()),
                 UITheme.FONT_BODY, UITheme.ACCENT);
+                
+        // Utilize HTML parsing natively inside JLabel to enforce multi-line wrapping constraints
         JLabel desc = UITheme.createLabel(
                 "<html><small>" + (item.getDescription() != null ? item.getDescription() : "") + "</small></html>",
                 UITheme.FONT_SMALL, UITheme.TEXT_MUTED);
 
+        // Transaction hook registering selections
         JButton addBtn = UITheme.createButton("+ Add", UITheme.PRIMARY, Color.WHITE);
         addBtn.setPreferredSize(new Dimension(70, 28));
         addBtn.addActionListener(e -> addToCart(item));
 
+        // ── Image Placeholder Rendering ───────────────────────
         JLabel imageLabel = new JLabel() {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 80, 80));
-                if (getIcon() != null) {
+                if (getIcon() != null) { // Render network texture if available
                     getIcon().paintIcon(this, g2, 0, 0);
-                } else {
+                } else { // Fallback paints solid circle
                     g2.setColor(getBackground());
                     g2.fillRect(0, 0, getWidth(), getHeight());
                     super.paintComponent(g2);
@@ -170,6 +187,8 @@ public class OrderPanel extends JPanel {
                 g2.dispose();
             }
         };
+        
+        // Circular profile constraint mapping
         imageLabel.setOpaque(false);
         imageLabel.setBackground(new Color(0xEEDDCC));
         imageLabel.setPreferredSize(new Dimension(80, 80));
@@ -177,15 +196,15 @@ public class OrderPanel extends JPanel {
         imageLabel.setVerticalAlignment(SwingConstants.CENTER);
         imageLabel.setFont(UITheme.FONT_HEADING.deriveFont(Font.BOLD, 28f));
         imageLabel.setForeground(UITheme.PRIMARY);
+        // Default text injection (Letter initials) shown until texture downloads
         imageLabel.setText(String.valueOf(item.getName().charAt(0)).toUpperCase());
 
+        // Asynchronous texture download avoiding main UI thread lockups
         new SwingWorker<ImageIcon, Void>() {
             @Override
             protected ImageIcon doInBackground() throws Exception {
-                // Use loremflickr with a lock on the item ID for deterministic random food
-                // images
-                java.net.URL url = java.net.URI.create("https://loremflickr.com/80/80/food?lock=" + item.getId())
-                        .toURL();
+                // Use loremflickr with a lock on the item ID for deterministic random food images
+                java.net.URL url = java.net.URI.create("https://loremflickr.com/80/80/food?lock=" + item.getId()).toURL();
                 java.awt.Image image = javax.imageio.ImageIO.read(url);
                 if (image != null) {
                     return new ImageIcon(image);
@@ -198,11 +217,11 @@ public class OrderPanel extends JPanel {
                 try {
                     ImageIcon icon = get();
                     if (icon != null) {
-                        imageLabel.setIcon(icon);
+                        imageLabel.setIcon(icon); // Overwrite initials with successful payload
                         imageLabel.setText(null);
                     }
                 } catch (Exception e) {
-                    // Ignore, fallback handled gracefully
+                    // Ignore, fallback handled gracefully via initials logic
                 }
             }
         }.execute();
@@ -233,6 +252,7 @@ public class OrderPanel extends JPanel {
     }
 
     // ── Right: Cart panel ─────────────────────────────────────────
+    /** Configures tabular representation reflecting mutable cart layout. */
     private JPanel buildCartPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setBackground(UITheme.CONTENT_BG);
@@ -240,11 +260,11 @@ public class OrderPanel extends JPanel {
 
         JLabel lbl = UITheme.createLabel("Cart", UITheme.FONT_HEADING, UITheme.TEXT_DARK);
 
-        // Cart table
+        // Cart associative table model locked down defensively against raw String edits
         cartModel = new DefaultTableModel(new String[] { "Item", "Qty", "Price", "Subtotal" }, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
-                return false;
+                return false; 
             }
         };
         cartTable = new JTable(cartModel);
@@ -255,7 +275,7 @@ public class OrderPanel extends JPanel {
         JScrollPane scroll = new JScrollPane(cartTable);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(0xDDC8B8)));
 
-        // Footer: total + controls
+        // Footer: aggregation totals + resolution controls
         totalLabel = UITheme.createLabel("Total: ₹ 0.00", UITheme.FONT_HEADING, UITheme.PRIMARY);
 
         JButton removeBtn = UITheme.createButton("Remove Selected", UITheme.DANGER, Color.WHITE);
@@ -282,18 +302,22 @@ public class OrderPanel extends JPanel {
 
     // ── Actions ──────────────────────────────────────────────────
 
+    /** Mutator executing DB transaction associating item with table session. */
     private void addToCart(MenuItem item) {
         OrderController.addItemToOrder(currentOrder.getId(), item.getId(),
                 item.getName(), item.getPrice(), 1);
-        refreshCart();
+        refreshCart(); // Hard reset UI syncing back cleanly from backend
     }
 
+    /** Purges explicitly highlighted node structurally. */
     private void removeSelectedItem() {
         int row = cartTable.getSelectedRow();
         if (row < 0) {
             JOptionPane.showMessageDialog(this, "Please select an item to remove.");
             return;
         }
+        
+        // Relies on identical ordering assumptions mapping visually to backend list index
         List<OrderItem> items = OrderController.getOrderItems(currentOrder.getId());
         if (row < items.size()) {
             OrderController.removeOrderItem(items.get(row).getId());
@@ -301,6 +325,10 @@ public class OrderPanel extends JPanel {
         }
     }
 
+    /** 
+     * Escalates current order status into finalized 'Bills', permanently terminating
+     * the session workflow, optionally calculating and appending custom Discounts/Taxes.
+     */
     private void generateBill() {
         List<OrderItem> items = OrderController.getOrderItems(currentOrder.getId());
         if (items.isEmpty()) {
@@ -308,43 +336,42 @@ public class OrderPanel extends JPanel {
             return;
         }
 
-        // Prompt for discount
+        // Intercept workflow routing for optional percentage inputs via Dialog
         String discStr = JOptionPane.showInputDialog(this,
                 "Enter Discount % (0 for none):", "Discount", JOptionPane.QUESTION_MESSAGE);
-        if (discStr == null)
-            return;
+                
+        if (discStr == null) return; // User opted to cancel/abort entirely
+        
         double discPct = 0;
         try {
             discPct = Double.parseDouble(discStr);
-        } catch (NumberFormatException ignored) {
-        }
-        discPct = Math.max(0, Math.min(100, discPct));
+        } catch (NumberFormatException ignored) {}
+        discPct = Math.max(0, Math.min(100, discPct)); // Clamp bounds securely
 
-        double taxPct = 5.0; // 5% GST
+        double taxPct = 5.0; // 5% flat GST constraint 
         Bill bill = BillController.generateBill(currentOrder.getId(), table.getId(), discPct, taxPct);
 
         if (bill == null) {
-            JOptionPane.showMessageDialog(this, "Error generating bill. Please try again.", "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Error generating bill. Please try again.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // Create the receipt dialog parented to the main dashboard (not the order panel
-        // which we are about to destroy)
+        // Create the receipt dialog parented strictly to the main dashboard 
+        // (Avoiding attachment to this OrderPanel since we are destroying it imminently)
         Frame mainFrame = (Frame) SwingUtilities.getWindowAncestor(parent);
         BillDialog dialog = new BillDialog(mainFrame, bill, items, table.getNumber());
 
-        // Close order panel window, refresh table layout
+        // Tear down memory associated with Order window natively returning priority to Dashboard Grid
         SwingUtilities.getWindowAncestor(this).dispose();
         parent.refresh();
 
-        // Show receipt dialog
+        // Reveal instantiated transactional receipt overlay
         dialog.setVisible(true);
     }
 
-    /** Reloads cart table from DB and updates total label. */
+    /** Truncates and rebuilds table rendering querying strictly from SQL instance properties. */
     private void refreshCart() {
-        cartModel.setRowCount(0);
+        cartModel.setRowCount(0); // Soft wipe rows
         List<OrderItem> items = OrderController.getOrderItems(currentOrder.getId());
         double total = 0;
         for (OrderItem oi : items) {

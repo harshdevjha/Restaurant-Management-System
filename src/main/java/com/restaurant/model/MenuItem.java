@@ -1,20 +1,38 @@
 package com.restaurant.model;
 
 /**
- * Model representing a single menu item.
+ * Model class representing a single menu item (e.g., a specific dish or drink).
+ * Maps to the 'menu_items' table in the database.
  */
 public class MenuItem {
+    // Unique identifier for the menu item
     private int id;
+    
+    // Foreign key linking this item to a specific Category
     private int categoryId;
-    private String categoryName; // convenience field
+    
+    // Convenience field to store the category's name for UI display without joining tables again
+    private String categoryName; 
+    
+    // Name of the dish/item
     private String name;
+    
+    // Detailed description of the ingredients/preparation
     private String description;
+    
+    // Cost of the item
     private double price;
+    
+    // Flag to temporarily disable ordering this item if it is out of stock
     private boolean available;
 
+    /** Default constructor for bean instantiation */
     public MenuItem() {
     }
 
+    /**
+     * Parameterized constructor handling full initialization from database records.
+     */
     public MenuItem(int id, int categoryId, String name, String description,
             double price, boolean available) {
         this.id = id;
@@ -25,6 +43,8 @@ public class MenuItem {
         this.available = available;
     }
 
+    // ── Getters & Setters ──────────────────────────────────────────────────
+    
     public int getId() {
         return id;
     }
@@ -81,6 +101,10 @@ public class MenuItem {
         this.available = a;
     }
 
+    /**
+     * Standard toString mapping, generally used by JList or JComboBox in the UI
+     * to show the item name alongside its price.
+     */
     @Override
     public String toString() {
         return name + " - ₹" + price;

@@ -7,8 +7,15 @@ import com.restaurant.view.UITheme;
 import javax.swing.*;
 
 /**
- * App – application entry point.
- *
+ * App – Central application entry point orchestrating structural initialization.
+ * 
+ * Responsibilities include:
+ * 1. Establishing Native/Cross-Platform Window aesthetics (Nimbus Look & Feel).
+ * 2. Hydrating UI Defaults enforcing global application thematic consistency.
+ * 3. Validating external persistent dependencies (MySQL Database) prior to execution.
+ * 4. Launching the primary graphical authentication interface securely.
+ * 5. Binding graceful environment shutdown handlers releasing system resources.
+ * 
  * Compile:
  * javac -cp "lib/*" -d out $(find src -name "*.java")
  *
@@ -20,7 +27,7 @@ public class App {
 
     public static void main(String[] args) {
 
-        // Set Nimbus look-and-feel for a modern default appearance
+        // 1. Set Nimbus look-and-feel explicitly for a modern standardized JVM appearance
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -29,36 +36,40 @@ public class App {
                 }
             }
         } catch (Exception e) {
-            // Falls back to system L&F — not critical
-            System.err.println("Nimbus L&F not available, using default.");
+            // Silently fallback to native system L&F preventing cosmetic degradation from crashing app
+            System.err.println("Nimbus L&F not available, using default system UI.");
         }
 
-        // Apply custom theme defaults
+        // 2. Map and inject custom thematic color/font templates into absolute Swing global scope
         UITheme.applyDefaults();
 
-        // Verify DB connectivity before showing the UI
+        // 3. Eagerly probe DB connectivity proactively failing fast if external conditions aren't met
         try {
             DBConnection.getConnection();
         } catch (Exception e) {
+            // Unrecoverable state: Output verbose HTML-formatted troubleshooting guide mapping to prerequisites
             JOptionPane.showMessageDialog(null,
                     "<html><b>Cannot connect to MySQL database.</b><br><br>"
                             + "Please ensure:<br>"
-                            + "• MySQL is running on localhost:3306<br>"
-                            + "• Database 'restaurant_db' exists (run sql/schema.sql)<br>"
-                            + "• Credentials in DBConnection.java are correct<br><br>"
-                            + "<i>Error: " + e.getMessage() + "</i></html>",
+                            + "• MySQL is running natively on localhost:3306<br>"
+                            + "• Database 'restaurant_db' schema exists (run sql/schema.sql)<br>"
+                            + "• Administrative Credentials in DBConnection.java match precisely<br><br>"
+                            + "<i>Error Details: " + e.getMessage() + "</i></html>",
                     "Database Connection Error",
                     JOptionPane.ERROR_MESSAGE);
+            // Terminate native OS process abruptly returning exit-code 1 mitigating headless zombies
             System.exit(1);
         }
 
-        // Launch on the Event Dispatch Thread
+        // 4. Delegate UI generation execution exclusively to Java's Event Dispatch Thread 
+        // avoiding concurrent race condition mutation of graphical components
         SwingUtilities.invokeLater(() -> {
             LoginFrame frame = new LoginFrame();
-            frame.setVisible(true);
+            frame.setVisible(true); // Expose initial locked boundary requesting authentication
         });
 
-        // Close DB connection on exit
+        // 5. Register native OS interceptor capturing CTRL+C or graceful termination signals
+        // Executes bounded lambda immediately severing persistent network pools
         Runtime.getRuntime().addShutdownHook(new Thread(DBConnection::closeConnection));
     }
 }

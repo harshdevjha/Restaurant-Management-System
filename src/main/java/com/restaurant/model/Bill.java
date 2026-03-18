@@ -3,23 +3,46 @@ package com.restaurant.model;
 import java.sql.Timestamp;
 
 /**
- * Model representing a generated bill for an order.
+ * Model class representing a generated final bill (invoice) for a completed order.
+ * Maps to the 'bills' table in the database and explicitly stores tax and discount breakdowns.
  */
 public class Bill {
+    // Unique identifier for the bill
     private int id;
+    
+    // The Order this bill finalizes (1:1 relationship)
     private int orderId;
-    private int tableNumber; // convenience
+    
+    // Convenience field displaying the table number for reference
+    private int tableNumber;
+    
+    // Base cost before any taxes or discounts are applied
     private double subtotal;
+    
+    // Applied discount percentage
     private double discountPct;
+    
+    // Explicitly stored monetary discount amount
     private double discountAmt;
+    
+    // Applicable tax percentage
     private double taxPct;
+    
+    // Explicitly stored monetary tax amount
     private double taxAmt;
+    
+    // Grand total to be paid by the customer
     private double totalAmount;
+    
+    // Automatically recorded timestamp when the bill was generated
     private Timestamp createdAt;
 
+    /** Default constructor */
     public Bill() {
     }
 
+    // ── Getters & Setters ──────────────────────────────────────────────────
+    
     public int getId() {
         return id;
     }

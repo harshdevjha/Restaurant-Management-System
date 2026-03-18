@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * ReportsPanel – Admin view for daily and monthly sales reports.
+ * ReportsPanel – Tactical financial overview interface abstracting aggregation reporting.
+ * Exclusively leverages complex backend grouping queries translating them
+ * visually into concise Daily/Monthly summary formats seamlessly.
+ * Accessible securely only by 'ADMIN' roles.
  */
 public class ReportsPanel extends JPanel {
 
@@ -26,10 +29,12 @@ public class ReportsPanel extends JPanel {
         initUI();
     }
 
+    /** Structures the date input mechanisms natively querying calendar systems to bootstrap state. */
     private void initUI() {
         JLabel heading = UITheme.createLabel("📊  Sales Reports", UITheme.FONT_TITLE, UITheme.PRIMARY);
 
-        // ── Controls bar ─────────────────────────────────────────
+        // ── Input Controls Bar ─────────────────────────────────────────
+        // Harvest operational system time guaranteeing inputs logically map to today
         Calendar now = Calendar.getInstance();
         daySpinner = new JSpinner(new SpinnerNumberModel(now.get(Calendar.DAY_OF_MONTH), 1, 31, 1));
         monthSpinner = new JSpinner(new SpinnerNumberModel(now.get(Calendar.MONTH) + 1, 1, 12, 1));
@@ -38,6 +43,8 @@ public class ReportsPanel extends JPanel {
         daySpinner.setPreferredSize(new Dimension(60, 30));
         monthSpinner.setPreferredSize(new Dimension(60, 30));
         yearSpinner.setPreferredSize(new Dimension(80, 30));
+        
+        // Suppress default localized formatting preventing random comma artifacts in integer years
         yearSpinner.setEditor(new JSpinner.NumberEditor(yearSpinner, "####"));
 
         JButton dailyBtn = UITheme.createButton("Daily Report", UITheme.PRIMARY, Color.WHITE);
@@ -46,6 +53,7 @@ public class ReportsPanel extends JPanel {
         dailyBtn.addActionListener(e -> showDailyReport());
         monthlyBtn.addActionListener(e -> showMonthlyReport());
 
+        // FlowLayout strictly pushing elements closely leftwards avoiding spread
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         controls.setOpaque(false);
         controls.add(UITheme.createLabel("Day:", UITheme.FONT_BTN, UITheme.TEXT_DARK));
@@ -58,7 +66,8 @@ public class ReportsPanel extends JPanel {
         controls.add(dailyBtn);
         controls.add(monthlyBtn);
 
-        // ── Table ────────────────────────────────────────────────
+        // ── Report Table ────────────────────────────────────────────────
+        // Structurally agnostic rows accommodating both Single-Day singular entries AND Multi-Day grouped logs
         tableModel = new DefaultTableModel(new String[] { "Date", "Bills Issued", "Revenue (₹)" }, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
@@ -83,20 +92,32 @@ public class ReportsPanel extends JPanel {
         add(summaryLabel, BorderLayout.SOUTH);
     }
 
+    /** 
+     * Extracts exact day target parsing through Spinners and executing a synchronous targeted SUM query.
+     */
     private void showDailyReport() {
         tableModel.setRowCount(0);
-        Calendar cal = buildCalendar();
+        Calendar cal = buildCalendar(); // Coerce primitive ints securely into Date target
+        
         Map<String, Object> result = ReportController.getDailyReport(cal.getTime());
+        // Defensively assert payload data structurally
         int bills = result.containsKey("bill_count") ? ((Number) result.get("bill_count")).intValue() : 0;
         double rev = result.containsKey("revenue") ? ((Number) result.get("revenue")).doubleValue() : 0;
+        
         tableModel.addRow(new Object[] { result.get("date"), bills, String.format("%.2f", rev) });
         summaryLabel.setText(String.format("Revenue on %s:  ₹ %.2f", result.get("date"), rev));
     }
 
+    /** 
+     * Extracts broad Month scale resolving grouped SQL aggregation displaying 
+     * daily breakdowns across an entire cyclical month block.
+     */
     private void showMonthlyReport() {
         tableModel.setRowCount(0);
         int month = (int) monthSpinner.getValue();
         int year = (int) yearSpinner.getValue();
+        
+        // Receive tabular array containing grouped rows mapping 1:1 against discrete days experiencing sales
         List<Map<String, Object>> rows = ReportController.getMonthlyReport(month, year);
         for (Map<String, Object> row : rows) {
             double rev = ((Number) row.get("revenue")).doubleValue();
@@ -104,15 +125,18 @@ public class ReportsPanel extends JPanel {
                     row.get("date"), row.get("bill_count"), String.format("%.2f", rev)
             });
         }
+        
+        // Execute secondary isolated SUM query acquiring raw unified month total avoiding complex row-math
         double monthTotal = ReportController.getTotalMonthlyRevenue(month, year);
         summaryLabel
                 .setText(String.format("Total for %d/%d:  ₹ %.2f  (%d days)", month, year, monthTotal, rows.size()));
     }
 
+    /** Resolves JSpinner disparate components structurally into standard Date representation avoiding time shifting */
     private Calendar buildCalendar() {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.DAY_OF_MONTH, (int) daySpinner.getValue());
-        cal.set(Calendar.MONTH, (int) monthSpinner.getValue() - 1);
+        cal.set(Calendar.MONTH, (int) monthSpinner.getValue() - 1); // Compensate Calendar 0-Index rules
         cal.set(Calendar.YEAR, (int) yearSpinner.getValue());
         return cal;
     }

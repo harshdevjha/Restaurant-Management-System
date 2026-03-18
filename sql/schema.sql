@@ -13,6 +13,8 @@ USE restaurant_db;
 
 -- ----------------------------------------------------------------
 -- Table: categories
+-- Purpose: Stores the broad categories for menu items (e.g., Starters, Main Course).
+-- Relations: Referenced by menu_items (1:N relationship).
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS categories (
     id          INT          AUTO_INCREMENT PRIMARY KEY,
@@ -23,6 +25,8 @@ CREATE TABLE IF NOT EXISTS categories (
 
 -- ----------------------------------------------------------------
 -- Table: users  (admin & staff accounts)
+-- Purpose: Manages system users, authentication credentials, and their roles for authorization.
+-- Relations: Referenced by orders to track which staff member handled them (1:N relationship).
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
     id         INT          AUTO_INCREMENT PRIMARY KEY,
@@ -36,6 +40,8 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- ----------------------------------------------------------------
 -- Table: menu_items
+-- Purpose: Defines the dishes and beverages available, along with prices and availability status.
+-- Relations: Belongs to a category. Referenced by order_items.
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS menu_items (
     id          INT            AUTO_INCREMENT PRIMARY KEY,
@@ -51,6 +57,8 @@ CREATE TABLE IF NOT EXISTS menu_items (
 
 -- ----------------------------------------------------------------
 -- Table: restaurant_tables
+-- Purpose: Tracks physical table attributes, capacity, and current occupancy status.
+-- Relations: Referenced by orders (1:N relationship).
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS restaurant_tables (
     id       INT         AUTO_INCREMENT PRIMARY KEY,
@@ -61,6 +69,8 @@ CREATE TABLE IF NOT EXISTS restaurant_tables (
 
 -- ----------------------------------------------------------------
 -- Table: orders
+-- Purpose: Represents a customer's visit/order session at a specific table, managed by a user.
+-- Relations: Belongs to user and restaurant_table. Has many order_items. Has one bill.
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS orders (
     id         INT       AUTO_INCREMENT PRIMARY KEY,
@@ -77,6 +87,8 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- ----------------------------------------------------------------
 -- Table: order_items
+-- Purpose: The line items for An order. Connects an order to specific menu items.
+-- Relations: Links orders and menu_items (Many-to-Many resolution table).
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS order_items (
     id           INT           AUTO_INCREMENT PRIMARY KEY,
@@ -91,6 +103,8 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 -- ----------------------------------------------------------------
 -- Table: bills
+-- Purpose: The final invoice generated from an order, storing tax, discount, and total amounts.
+-- Relations: Belongs to a single order (1:1 relationship).
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS bills (
     id            INT           AUTO_INCREMENT PRIMARY KEY,
