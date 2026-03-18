@@ -11,6 +11,7 @@ import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -112,6 +113,9 @@ public class BillDialog extends JDialog implements Printable {
         btnPanel.add(printBtn);
         btnPanel.add(closeBtn);
         add(btnPanel, BorderLayout.SOUTH);
+        
+        setSize(450, 650);
+        setLocationRelativeTo(owner);
     }
 
     // ── Print support ─────────────────────────────────────────────
