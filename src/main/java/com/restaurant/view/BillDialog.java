@@ -49,6 +49,12 @@ public class BillDialog extends JDialog implements Printable {
                 ? bill.getCreatedAt()
                 : new Date());
         receipt.add(twoColLabel("Bill No:", "#" + bill.getId()));
+        if (bill.getCustomerName() != null && !bill.getCustomerName().isEmpty()) {
+            receipt.add(twoColLabel("Customer:", bill.getCustomerName()));
+        }
+        if (bill.getCustomerPhone() != null && !bill.getCustomerPhone().isEmpty()) {
+            receipt.add(twoColLabel("Phone:", bill.getCustomerPhone()));
+        }
         receipt.add(twoColLabel("Table:", "Table " + tableNumber));
         receipt.add(twoColLabel("Date:", dateStr));
         receipt.add(createDivider('─'));

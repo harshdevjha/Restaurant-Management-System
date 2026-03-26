@@ -14,7 +14,7 @@ public class TestBill {
         // Attempt to execute a complex transactional query mocking inputs:
         // Mock Parameters: Order ID = 2, Table Number = 5, Discount = 0%, Tax = 5%
         try {
-            Bill bill = BillController.generateBill(2, 5, 0, 5);
+            Bill bill = BillController.generateBill(2, 5, "Test Customer", "1234567890", 0, 5);
             
             // Validate logical object mapping against expected database state changes
             if (bill == null) {

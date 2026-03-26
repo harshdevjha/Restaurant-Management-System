@@ -26,6 +26,7 @@ public class BillController {
      * @return the fully populated persisted Bill object, or null on failure.
      */
     public static Bill generateBill(int orderId, int tableId,
+            String customerName, String customerPhone,
             double discountPct, double taxPct) {
             
         // 1. Fetch order items to calculate baseline subtotal
@@ -49,20 +50,22 @@ public class BillController {
         double total = afterDisc + taxAmt;
 
         // 2. Persist comprehensive bill to lock in these calculations permanently
-        String sql = "INSERT INTO bills (order_id, subtotal, discount_pct, discount_amt, "
-                + "tax_pct, tax_amt, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO bills (order_id, customer_name, customer_phone, subtotal, discount_pct, discount_amt, "
+                + "tax_pct, tax_amt, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 
         try (Connection conn = DBConnection.getConnection();
                 // Request generated keys parameter guarantees we capture the DB-inserted Primary Key
                 PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 
             ps.setInt(1, orderId);
-            ps.setDouble(2, subtotal);
-            ps.setDouble(3, discountPct);
-            ps.setDouble(4, discountAmt);
-            ps.setDouble(5, taxPct);
-            ps.setDouble(6, taxAmt);
-            ps.setDouble(7, total);
+            ps.setString(2, customerName);
+            ps.setString(3, customerPhone);
+            ps.setDouble(4, subtotal);
+            ps.setDouble(5, discountPct);
+            ps.setDouble(6, discountAmt);
+            ps.setDouble(7, taxPct);
+            ps.setDouble(8, taxAmt);
+            ps.setDouble(9, total);
             ps.executeUpdate();
 
             // Extract the generated primary key for the new bill
@@ -71,6 +74,8 @@ public class BillController {
                     Bill bill = new Bill();
                     bill.setId(rs.getInt(1)); // The extracted newly generated DB row ID
                     bill.setOrderId(orderId);
+                    bill.setCustomerName(customerName);
+                    bill.setCustomerPhone(customerPhone);
                     bill.setSubtotal(subtotal);
                     bill.setDiscountPct(discountPct);
                     bill.setDiscountAmt(discountAmt);
@@ -97,7 +102,7 @@ public class BillController {
     public static List<Bill> getAllBills() {
         List<Bill> list = new ArrayList<>();
         // INNER JOIN retrieves the convenience table_number that was originally used.
-        String sql = "SELECT b.id, b.order_id, t.number AS table_number, "
+        String sql = "SELECT b.id, b.order_id, b.customer_name, b.customer_phone, t.number AS table_number, "
                 + "b.subtotal, b.discount_pct, b.discount_amt, "
                 + "b.tax_pct, b.tax_amt, b.total_amount, b.created_at "
                 + "FROM bills b "
@@ -123,6 +128,8 @@ public class BillController {
         Bill b = new Bill();
         b.setId(rs.getInt("id"));
         b.setOrderId(rs.getInt("order_id"));
+        b.setCustomerName(rs.getString("customer_name"));
+        b.setCustomerPhone(rs.getString("customer_phone"));
         b.setTableNumber(rs.getInt("table_number"));
         b.setSubtotal(rs.getDouble("subtotal"));
         b.setDiscountPct(rs.getDouble("discount_pct"));

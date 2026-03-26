@@ -109,6 +109,8 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE TABLE IF NOT EXISTS bills (
     id            INT           AUTO_INCREMENT PRIMARY KEY,
     order_id      INT           NOT NULL UNIQUE,
+    customer_name VARCHAR(100),
+    customer_phone VARCHAR(20),
     subtotal      DECIMAL(10,2) NOT NULL,
     discount_pct  DECIMAL(5,2)  NOT NULL DEFAULT 0.00,
     discount_amt  DECIMAL(10,2) NOT NULL DEFAULT 0.00,

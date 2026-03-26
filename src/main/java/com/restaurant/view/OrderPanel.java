@@ -336,12 +336,28 @@ public class OrderPanel extends JPanel {
             return;
         }
 
-        // Intercept workflow routing for optional percentage inputs via Dialog
-        String discStr = JOptionPane.showInputDialog(this,
-                "Enter Discount % (0 for none):", "Discount", JOptionPane.QUESTION_MESSAGE);
+        // Intercept workflow routing for optional inputs via Custom Dialog
+        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        JTextField nameField = new JTextField();
+        JTextField phoneField = new JTextField();
+        JTextField discField = new JTextField("0");
+
+        inputPanel.add(new JLabel("Customer Name:"));
+        inputPanel.add(nameField);
+        inputPanel.add(new JLabel("Customer Phone:"));
+        inputPanel.add(phoneField);
+        inputPanel.add(new JLabel("Discount %:"));
+        inputPanel.add(discField);
+
+        int result = JOptionPane.showConfirmDialog(this, inputPanel, 
+                "Customer Information & Discount", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
                 
-        if (discStr == null) return; // User opted to cancel/abort entirely
+        if (result != JOptionPane.OK_OPTION) return; // User opted to cancel/abort entirely
         
+        String customerName = nameField.getText().trim();
+        String customerPhone = phoneField.getText().trim();
+        String discStr = discField.getText().trim();
+
         double discPct = 0;
         try {
             discPct = Double.parseDouble(discStr);
@@ -349,7 +365,8 @@ public class OrderPanel extends JPanel {
         discPct = Math.max(0, Math.min(100, discPct)); // Clamp bounds securely
 
         double taxPct = 5.0; // 5% flat GST constraint 
-        Bill bill = BillController.generateBill(currentOrder.getId(), table.getId(), discPct, taxPct);
+        Bill bill = BillController.generateBill(currentOrder.getId(), table.getId(), 
+                customerName, customerPhone, discPct, taxPct);
 
         if (bill == null) {
             JOptionPane.showMessageDialog(this, "Error generating bill. Please try again.", "Error", JOptionPane.ERROR_MESSAGE);

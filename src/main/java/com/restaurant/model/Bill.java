@@ -13,6 +13,10 @@ public class Bill {
     // The Order this bill finalizes (1:1 relationship)
     private int orderId;
     
+    // Customer details
+    private String customerName;
+    private String customerPhone;
+    
     // Convenience field displaying the table number for reference
     private int tableNumber;
     
@@ -57,6 +61,22 @@ public class Bill {
 
     public void setOrderId(int o) {
         this.orderId = o;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public String getCustomerPhone() {
+        return customerPhone;
+    }
+
+    public void setCustomerPhone(String customerPhone) {
+        this.customerPhone = customerPhone;
     }
 
     public int getTableNumber() {
